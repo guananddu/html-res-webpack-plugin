@@ -23,11 +23,16 @@ function HtmlResWebpackPlugin(options) {
 		favicon: options.favicon || false,
 		templateContent: options.templateContent || function(tpl) { return tpl },
 		cssPublicPath: options.cssPublicPath || null,
+		// 字符串替换规则
+		replace: options.replace || [ ]
 	}, options);
 
 	this.logChunkName = true;
 
 	this.checkRequiredOptions(this.options);
+
+	if ( this.options.replace.length === undefined )
+		throw 'HtmlResWebpackPlugin "options.replace" should be an Array instance.';
 
 	// html scripts/css/favicon assets
 	this.stats = {
@@ -95,6 +100,9 @@ HtmlResWebpackPlugin.prototype.apply = function(compiler, callback) {
 			// process
 			this.processAssets(compilation);
 		}
+
+		// html string replace
+		this.handleReplace( compilation );
 
 	    // compress html content
 	    this.options.htmlMinify && this.compressHtml(compilation);
@@ -170,6 +178,22 @@ HtmlResWebpackPlugin.prototype.buildStats = function(compilation) {
 	});
 
 	// console.log(this.stats.assets);
+};
+
+HtmlResWebpackPlugin.prototype.handleReplace = function ( compilation ) {
+
+	if ( ! this.options.replace.length ) return;
+
+	let the = this;
+	let htmlContent = compilation.assets[ the.options.htmlFileName ].source();
+
+	this.options.replace.forEach( ( el, inx ) => {
+		htmlContent = htmlContent.replace( el.search, el.replace );
+	} );
+
+	compilation.assets[ the.options.htmlFileName ].source = () => {
+		return this.options.templateContent.bind( this )( htmlContent );
+	};
 };
 
 /**
